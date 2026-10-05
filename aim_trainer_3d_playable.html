@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Aim Trainer 3D</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#081426;color:#fff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;touch-action:manipulation}
+#app{position:relative;width:100%;height:100%;overflow:hidden;background:#75b9ee}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:manipulation}
+.panel{background:#07172beF;border:1px solid #36d8ff;border-radius:16px;box-shadow:0 0 22px #00bfff30}
+#top{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;pointer-events:none}
+.logo{font-size:clamp(21px,4.8vw,43px);font-weight:1000;font-style:italic;letter-spacing:-1px;text-shadow:0 3px #13233f}.logo span{color:#20dcff}
+.stats{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.stat{padding:7px 10px;font-size:12px;min-width:65px;text-align:center}.stat b{display:block;font-size:20px;color:#35e4ff}
+#crosshair{position:absolute;left:50%;top:50%;width:26px;height:26px;transform:translate(-50%,-50%);pointer-events:none;z-index:2}
+#crosshair:before,#crosshair:after{content:"";position:absolute;background:#fff;box-shadow:0 0 3px #000,0 0 5px #000}
+#crosshair:before{left:12px;top:0;width:2px;height:26px}#crosshair:after{left:0;top:12px;width:26px;height:2px}
+#menu{position:absolute;z-index:5;left:50%;top:52%;transform:translate(-50%,-50%);width:min(440px,calc(100% - 28px));padding:22px;text-align:center}
+h1{font-size:clamp(28px,7vw,44px);margin:0}h1 span{color:#1ddcff}p{color:#c4eaff;margin:8px 0 16px}
+button,select{font:inherit}button{cursor:pointer;border:0;border-radius:11px;padding:12px 16px;font-weight:850}
+.primary{width:100%;margin-top:8px;color:#fff;background:linear-gradient(#19e878,#008743);font-size:21px;box-shadow:0 0 18px #18ff8c55}
+.secondary{width:100%;margin-top:8px;background:#102d50;color:#e9f8ff;border:1px solid #36d8ff}
+select,input[type=range]{width:100%;margin:7px 0;padding:10px;border-radius:9px;background:#0c2746;color:white;border:1px solid #3d8ab9}
+label{display:block;text-align:left;font-size:13px;color:#c7eaff;margin-top:10px}
+#bottom{position:absolute;left:12px;right:12px;bottom:12px;display:flex;justify-content:space-between;align-items:flex-end;gap:8px;pointer-events:none}
+.hud{padding:9px 12px;font-size:12px}.hud strong{font-size:19px;color:#3be4ff}.hud small{display:block;color:#bad9f3}
+#notice{position:absolute;left:50%;top:22%;transform:translateX(-50%);font-weight:900;letter-spacing:2px;text-shadow:0 2px 5px #000;white-space:nowrap;pointer-events:none}
+#toast{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);font-size:28px;font-weight:1000;color:#65ffb2;text-shadow:0 2px 8px #000;opacity:0;pointer-events:none}
+#toast.show{animation:pop .45s ease-out}@keyframes pop{0%{opacity:1;transform:translate(-50%,-50%) scale(.8)}100%{opacity:0;transform:translate(-50%,-90%) scale(1.15)}}
+#pause{position:absolute;right:12px;top:88px;z-index:4;display:none;background:#07172beF;color:white;border:1px solid #36d8ff;padding:8px 12px}
+#aimControls{position:absolute;inset:0;pointer-events:none;z-index:3}
+#aimControls button{pointer-events:auto;position:absolute;bottom:85px;width:62px;height:62px;border-radius:50%;background:#07172b99;color:white;border:1px solid #8ddfff;font-size:25px;display:none}
+#left{left:14px}#right{left:84px}#up{right:14px}#down{right:84px}
+@media(max-width:520px){#top{top:8px;left:8px;right:8px}.stat{padding:5px 7px;min-width:52px;font-size:10px}.stat b{font-size:17px}.hud{padding:7px 9px}.hud strong{font-size:17px}#notice{top:19%;font-size:10px}#aimControls button{display:block}}
+</style>
+</head>
+<body><div id="app">
+<canvas id="scene"></canvas><div id="crosshair"></div>
+<div id="top"><div class="logo">AIM <span>TRAINER 3D</span></div><div class="stats"><div class="stat panel">SCORE<b id="score">0</b></div><div class="stat panel">TIME<b id="time">30</b></div><div class="stat panel">HIT RATE<b id="acc">0%</b></div></div></div>
+<div id="notice">CLICK / TAP TARGETS • TRAIN YOUR REFLEXES</div><div id="toast">+100</div>
+<button id="pause" onclick="pauseGame()">Ⅱ PAUSE</button>
+<div id="aimControls"><button id="left" aria-label="aim left">◀</button><button id="right" aria-label="aim right">▶</button><button id="up" aria-label="aim up">▲</button><button id="down" aria-label="aim down">▼</button></div>
+<div id="bottom"><div class="hud panel"><small>HITS <span id="hits">0</span> · SHOTS <span id="shots">0</span></small><strong id="combo">COMBO x0</strong></div><div class="hud panel" style="text-align:right"><small>BEST SCORE</small><strong id="best">0</strong></div></div>
+<div id="menu" class="panel"><h1>AIM <span>TRAINER</span></h1><p>3D-style range • moving targets • quick reflexes</p>
+<label for="duration">GAME MODE</label><select id="duration"><option value="30">Target Practice — 30 seconds</option><option value="60">Endurance — 60 seconds</option><option value="15">Quick Flick — 15 seconds</option></select>
+<label for="sensitivity">AIM SENSITIVITY: <span id="sensVal">1.0×</span></label><input id="sensitivity" type="range" min=".5" max="2" step=".1" value="1">
+<button class="primary" onclick="startGame()">▶ PLAY NOW</button><button class="secondary" onclick="help()">HOW TO PLAY</button><p id="helptext" style="display:none;font-size:12px;margin-bottom:0">Tap/click targets to score. Targets move across the range. On computer, move your mouse to aim; on phone, use the arrow buttons or tap targets. Click/tap empty space counts as a miss.</p></div>
+</div>
+<script>
+const canvas=document.getElementById('scene'),ctx=canvas.getContext('2d');
+const $=id=>document.getElementById(id);
+let W=0,H=0,dpr=1,targets=[],score=0,hits=0,shots=0,combo=0,left=30,running=false,paused=false,last=0,raf=0,spawnClock=0,aimX=.5,aimY=.5,sensitivity=1,flash=0;
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);draw()}addEventListener('resize',resize);
+function best(){try{return +(localStorage.getItem('aimTrainer3DBest')||0)}catch(e){return 0}}
+$('best').textContent=best();$('sensitivity').oninput=e=>{$('sensVal').textContent=(+e.target.value).toFixed(1)+'×';sensitivity=+e.target.value};
+function help(){let p=$('helptext');p.style.display=p.style.display==='none'?'block':'none'}
+function project(x,y,z){let scale=H/(z+3.4)*.62;return {x:W/2+(x-aimX*.0)*scale*1.5,y:H*.48+(y-.1)*scale*1.5,scale}}
+function draw(){
+ ctx.clearRect(0,0,W,H);
+ let sky=ctx.createLinearGradient(0,0,0,H*.55);sky.addColorStop(0,'#2887d2');sky.addColorStop(1,'#c2e8ff');ctx.fillStyle=sky;ctx.fillRect(0,0,W,H);
+ // distant clouds
+ ctx.fillStyle='#ffffff35';for(let i=0;i<7;i++){let x=((i*187+W*.05)%(W+120))-50,y=H*(.08+(i%3)*.06);ctx.beginPath();ctx.ellipse(x,y,35,10,0,0,Math.PI*2);ctx.ellipse(x+20,y-5,26,13,0,0,Math.PI*2);ctx.fill()}
+ // back wall
+ ctx.fillStyle='#263e60';ctx.beginPath();ctx.moveTo(0,H*.35);ctx.lineTo(W*.2,H*.42);ctx.lineTo(W*.8,H*.42);ctx.lineTo(W,H*.34);ctx.lineTo(W,H*.64);ctx.lineTo(0,H*.64);ctx.fill();
+ for(let i=0;i<9;i++){let x=i*W/8;ctx.strokeStyle='#527296';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,H*.39);ctx.lineTo(x,H*.64);ctx.stroke()}
+ // floor perspective
+ ctx.fillStyle='#344965';ctx.beginPath();ctx.moveTo(0,H*.57);ctx.lineTo(W,H*.57);ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.fill();
+ ctx.strokeStyle='#86b9db3b';ctx.lineWidth=1;
+ for(let i=0;i<12;i++){let y=H*.57+(i/12)*(H*.5);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+ for(let i=-8;i<=8;i++){ctx.beginPath();ctx.moveTo(W/2+i*3,H*.57);ctx.lineTo(W/2+i*W*.12,H);ctx.stroke()}
+ // neon lane
+ ctx.strokeStyle='#17dfff';ctx.shadowColor='#17dfff';ctx.shadowBlur=9;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,H*.65);ctx.lineTo(W*.28,H*.58);ctx.lineTo(W*.72,H*.58);ctx.lineTo(W,H*.65);ctx.stroke();ctx.shadowBlur=0;
+ // target stands and moving targets
+ targets.sort((a,b)=>b.z-a.z).forEach(t=>{let p=project(t.x,t.y,t.z),r=Math.max(9,Math.min(36,26*p.scale));let y=p.y;
+ ctx.fillStyle='#16263e';ctx.fillRect(p.x-r*.14,y+r*.45,r*.28,r*.95);ctx.fillStyle='#7088a5';ctx.fillRect(p.x-r*.65,y+r*.45,r*1.3,r*.17);
+ ctx.save();ctx.translate(p.x,y);ctx.shadowColor='#ff243f';ctx.shadowBlur=12;
+ ctx.fillStyle='#a70f2b';ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,0,r*.73,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#ff304b';ctx.beginPath();ctx.arc(0,0,r*.53,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(0,0,r*.25,0,Math.PI*2);ctx.fill();ctx.restore();
+ });
+ // stylized weapon at bottom right
+ ctx.save();ctx.translate(W*.77,H*.88);ctx.rotate(-.16);ctx.fillStyle='#101a2a';ctx.beginPath();ctx.moveTo(-W*.04,-H*.13);ctx.lineTo(W*.055,-H*.13);ctx.lineTo(W*.07,-H*.025);ctx.lineTo(W*.025,H*.025);ctx.lineTo(-W*.01,H*.01);ctx.closePath();ctx.fill();ctx.fillStyle='#34475f';ctx.fillRect(-W*.035,-H*.14,W*.09,H*.045);ctx.fillStyle='#101a2a';ctx.fillRect(-W*.01,-H*.1,W*.03,H*.1);ctx.restore();
+}
+function newTarget(){let lane=(Math.random()-.5)*2.2;targets.push({x:lane,y:(Math.random()-.5)*.9,z:1.3+Math.random()*2.8,v:(Math.random()-.5)*.6,phase:Math.random()*6.28,r:24});}
+function startGame(){cancelAnimationFrame(raf);targets=[];score=hits=shots=combo=0;left=+$('duration').value;sensitivity=+$('sensitivity').value;running=true;paused=false;last=performance.now();spawnClock=0;for(let i=0;i<5;i++)newTarget();$('menu').style.display='none';$('pause').style.display='block';$('pause').textContent='Ⅱ PAUSE';updateHud();raf=requestAnimationFrame(loop)}
+function updateHud(){$('score').textContent=score;$('time').textContent=Math.ceil(left);$('hits').textContent=hits;$('shots').textContent=shots;$('acc').textContent=(shots?Math.round(hits/shots*100):0)+'%';$('combo').textContent='COMBO x'+combo}
+function loop(now){if(!running)return;let dt=Math.min((now-last)/1000,.05);last=now;if(!paused){left-=dt;spawnClock+=dt;targets.forEach(t=>{t.x+=t.v*dt*sensitivity;t.phase+=dt*2;t.y+=Math.sin(t.phase)*dt*.08;if(t.x>1.35||t.x< -1.35)t.v*=-1;t.z-=dt*.025});targets=targets.filter(t=>t.z>.5);if(spawnClock>.85&&targets.length<7){newTarget();spawnClock=0}if(left<=0){left=0;updateHud();endGame();return}updateHud();draw()}raf=requestAnimationFrame(loop)}
+function pauseGame(){if(!running)return;paused=!paused;$('pause').textContent=paused?'▶ RESUME':'Ⅱ PAUSE';last=performance.now()}
+function toast(s){let e=$('toast');e.textContent=s;e.classList.remove('show');void e.offsetWidth;e.classList.add('show')}
+function shoot(e){if(!running||paused)return;let rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;shots++;let hitIndex=-1,bestDist=Infinity;targets.forEach((t,i)=>{let p=project(t.x,t.y,t.z),r=Math.max(9,Math.min(36,26*p.scale));let d=Math.hypot(x-p.x,y-p.y);if(d<r*1.15&&d<bestDist){bestDist=d;hitIndex=i}});if(hitIndex>=0){targets.splice(hitIndex,1);hits++;combo++;score+=100+Math.min(combo,10)*10;toast('+'+(100+Math.min(combo,10)*10));flash=.1}else{combo=0;toast('MISS')}updateHud();draw()}
+canvas.addEventListener('pointerdown',shoot);
+canvas.addEventListener('pointermove',e=>{aimX=e.clientX/W;aimY=e.clientY/H});
+function nudge(dx,dy){if(!running||paused)return;targets.forEach(t=>{t.x-=dx*.1*sensitivity;t.y-=dy*.1*sensitivity});draw()}
+[['left',-1,0],['right',1,0],['up',0,-1],['down',0,1]].forEach(([id,x,y])=>{let b=$(id);b.addEventListener('pointerdown',e=>{e.preventDefault();nudge(x,y)});});
+function endGame(){running=false;cancelAnimationFrame(raf);$('pause').style.display='none';let b=best();if(score>b){b=score;try{localStorage.setItem('aimTrainer3DBest',String(b))}catch(e){}}$('best').textContent=b;$('menu').innerHTML=`<h1>ROUND <span>OVER</span></h1><p>Good practice! Check your results.</p><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:14px 0"><div class="stat panel">SCORE<b>${score}</b></div><div class="stat panel">ACCURACY<b>${shots?Math.round(hits/shots*100):0}%</b></div><div class="stat panel">HITS<b>${hits}</b></div></div><button class="primary" onclick="resetMenu()">▶ PLAY AGAIN</button><button class="secondary" onclick="resetMenu()">MAIN MENU</button>`;$('menu').style.display='block';draw()}
+function resetMenu(){$('menu').innerHTML=`<h1>AIM <span>TRAINER</span></h1><p>3D-style range • moving targets • quick reflexes</p><label for="duration">GAME MODE</label><select id="duration"><option value="30">Target Practice — 30 seconds</option><option value="60">Endurance — 60 seconds</option><option value="15">Quick Flick — 15 seconds</option></select><label for="sensitivity">AIM SENSITIVITY: <span id="sensVal">1.0×</span></label><input id="sensitivity" type="range" min=".5" max="2" step=".1" value="1"><button class="primary" onclick="startGame()">▶ PLAY NOW</button><button class="secondary" onclick="help()">HOW TO PLAY</button><p id="helptext" style="display:none;font-size:12px;margin-bottom:0">Tap/click targets to score. Targets move across the range. On computer, move your mouse to aim; on phone, use the arrow buttons or tap targets. Click/tap empty space counts as a miss.</p>`;$('menu').style.display='block';$('best').textContent=best();$('sensitivity').oninput=e=>{$('sensVal').textContent=(+e.target.value).toFixed(1)+'×';sensitivity=+e.target.value}}
+resize();
+</script></body></html>
